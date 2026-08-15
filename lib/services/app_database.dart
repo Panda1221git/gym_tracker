@@ -23,29 +23,68 @@ class Exercises extends Table {
   TextColumn get equipment => text().nullable()();
 }
 
-/// Ein komplettes Training
-class Workouts extends Table {
+/// Ein Trainingsplan, z. B. Push / Pull / Legs
+class WorkoutTemplates extends Table {
   IntColumn get id => integer().autoIncrement()();
 
   IntColumn get userId => integer().references(AppUsers, #id)();
 
   TextColumn get name => text()();
 
+  IntColumn get orderIndex => integer()();
+}
+
+/// Eine Übung innerhalb eines Trainingsplans
+class TemplateExercises extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  IntColumn get templateId =>
+      integer().references(WorkoutTemplates, #id)();
+
+  IntColumn get exerciseId =>
+      integer().references(Exercises, #id)();
+
+  IntColumn get orderIndex => integer()();
+
+  /// Anzahl der geplanten Sätze
+  IntColumn get plannedSets => integer()();
+
+  /// Ziel-Wiederholungen, z. B. 8-10
+  TextColumn get targetRepetitions => text()();
+
+  /// Das aktuell verwendete Standardgewicht
+  RealColumn get defaultWeight =>
+      real().withDefault(const Constant(0))();
+}
+
+/// Ein tatsächliches Training
+class Workouts extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  IntColumn get userId => integer().references(AppUsers, #id)();
+
+  IntColumn get templateId =>
+      integer().references(WorkoutTemplates, #id)();
+
+  TextColumn get name => text()();
+
   DateTimeColumn get date => dateTime()();
 }
 
-/// Eine Übung innerhalb eines Trainings
+/// Eine Übung innerhalb eines tatsächlichen Trainings
 class WorkoutExercises extends Table {
   IntColumn get id => integer().autoIncrement()();
 
-  IntColumn get workoutId => integer().references(Workouts, #id)();
+  IntColumn get workoutId =>
+      integer().references(Workouts, #id)();
 
-  IntColumn get exerciseId => integer().references(Exercises, #id)();
+  IntColumn get exerciseId =>
+      integer().references(Exercises, #id)();
 
   IntColumn get orderIndex => integer()();
 }
 
-/// Ein einzelner Satz
+/// Ein tatsächlich ausgeführter Satz
 class WorkoutSets extends Table {
   IntColumn get id => integer().autoIncrement()();
 
@@ -56,7 +95,8 @@ class WorkoutSets extends Table {
 
   IntColumn get repetitions => integer()();
 
-  BoolColumn get completed => boolean().withDefault(const Constant(false))();
+  BoolColumn get completed =>
+      boolean().withDefault(const Constant(false))();
 
   IntColumn get setNumber => integer()();
 }
@@ -65,6 +105,8 @@ class WorkoutSets extends Table {
   tables: [
     AppUsers,
     Exercises,
+    WorkoutTemplates,
+    TemplateExercises,
     Workouts,
     WorkoutExercises,
     WorkoutSets,
@@ -80,5 +122,18 @@ class AppDatabase extends _$AppDatabase {
         );
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (Migrator m) async {
+          await m.createAll();
+        },
+        onUpgrade: (Migrator m, int from, int to) async {
+          if (from < 2) {
+            await m.createTable(workoutTemplates);
+            await m.createTable(templateExercises);
+          }
+        },
+      );
 }
