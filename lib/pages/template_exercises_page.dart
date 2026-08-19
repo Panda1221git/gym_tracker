@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:drift/drift.dart' hide Column;
 
 import '../services/app_database.dart';
+import '../services/database_service.dart';
+
+import '../pages/active_workout_page.dart';
 
 class TemplateExercisesPage extends StatefulWidget {
   final WorkoutTemplate template;
@@ -17,7 +20,7 @@ class TemplateExercisesPage extends StatefulWidget {
 }
 
 class _TemplateExercisesPageState extends State<TemplateExercisesPage> {
-  final AppDatabase _database = AppDatabase();
+  final AppDatabase _database = DatabaseService.database;
 
   List<TypedResult> _results = [];
   bool _isLoading = true;
@@ -146,24 +149,25 @@ class _TemplateExercisesPageState extends State<TemplateExercisesPage> {
     await _loadExercises();
   }
 
-  Future<void> _editExercise(
-    TemplateExercise templateExercise,
-    Exercise exercise,
-  ) async {
-    final setsController = TextEditingController(
-      text: templateExercise.plannedSets.toString(),
-    );
+Future<void> _editExercise(
+  TemplateExercise templateExercise,
+  Exercise exercise,
+) async {
+  final setsController = TextEditingController(
+    text: templateExercise.plannedSets.toString(),
+  );
 
-    final repetitionsController = TextEditingController(
-      text: templateExercise.targetRepetitions,
-    );
+  final repetitionsController = TextEditingController(
+    text: templateExercise.targetRepetitions,
+  );
 
-    final weightController = TextEditingController(
-      text: templateExercise.defaultWeight == 0
-          ? ''
-          : templateExercise.defaultWeight.toString(),
-    );
+  final weightController = TextEditingController(
+    text: templateExercise.defaultWeight == 0
+        ? ''
+        : templateExercise.defaultWeight.toString(),
+  );
 
+  try {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (dialogContext) {
@@ -247,18 +251,12 @@ class _TemplateExercisesPageState extends State<TemplateExercisesPage> {
       },
     );
 
-    setsController.dispose();
-    repetitionsController.dispose();
-    weightController.dispose();
-
-    if (result == null) return;
+    if (result == null || !mounted) return;
 
     final newSets = result['sets'] as int;
     final newRepetitions = result['repetitions'] as String;
     final newWeight = result['weight'] as double;
 
-    // Dialog ist bereits geschlossen.
-    // Erst jetzt Datenbank ändern.
     await (_database.update(_database.templateExercises)
           ..where(
             (item) => item.id.equals(templateExercise.id),
@@ -272,7 +270,9 @@ class _TemplateExercisesPageState extends State<TemplateExercisesPage> {
     );
 
     await _loadExercises();
+  } finally {
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -289,8 +289,25 @@ class _TemplateExercisesPageState extends State<TemplateExercisesPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.template.name),
-      ),
+  title: Text(widget.template.name),
+  actions: [
+    IconButton(
+      tooltip: 'Training starten',
+      icon: const Icon(Icons.play_arrow),
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ActiveWorkoutPage(
+              templateId: widget.template.id,
+              workoutName: widget.template.name,
+            ),
+          ),
+        );
+      },
+    ),
+  ],
+),
       body: _results.isEmpty
           ? const Center(
               child: Text(

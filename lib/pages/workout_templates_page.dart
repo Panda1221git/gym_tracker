@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/app_database.dart';
+import '../services/database_service.dart';
 import 'template_exercises_page.dart';
 
 class WorkoutTemplatesPage extends StatefulWidget {
@@ -11,12 +12,12 @@ class WorkoutTemplatesPage extends StatefulWidget {
 }
 
 class _WorkoutTemplatesPageState extends State<WorkoutTemplatesPage> {
-  final AppDatabase _database = AppDatabase();
+  final AppDatabase _database = DatabaseService.database;
 
-  void _showAddTemplateDialog() {
+  Future<void> _showAddTemplateDialog() async {
     final nameController = TextEditingController();
 
-    showDialog(
+    final result = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
@@ -33,31 +34,19 @@ class _WorkoutTemplatesPageState extends State<WorkoutTemplatesPage> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(dialogContext);
-                nameController.dispose();
+                Navigator.of(dialogContext).pop();
               },
               child: const Text('Abbrechen'),
             ),
             FilledButton(
-              onPressed: () async {
+              onPressed: () {
                 final name = nameController.text.trim();
 
                 if (name.isEmpty) {
                   return;
                 }
 
-                await _database.into(_database.workoutTemplates).insert(
-                      WorkoutTemplatesCompanion.insert(
-                        userId: 1,
-                        name: name,
-                        orderIndex: 0,
-                      ),
-                    );
-
-                if (!dialogContext.mounted) return;
-
-                Navigator.pop(dialogContext);
-                nameController.dispose();
+                Navigator.of(dialogContext).pop(name);
               },
               child: const Text('Erstellen'),
             ),
@@ -65,6 +54,20 @@ class _WorkoutTemplatesPageState extends State<WorkoutTemplatesPage> {
         );
       },
     );
+
+    if (result == null || result.isEmpty || !mounted) {
+      return;
+    }
+
+    final user = await DatabaseService.getOrCreateDefaultUser();
+
+    await _database.into(_database.workoutTemplates).insert(
+          WorkoutTemplatesCompanion.insert(
+            userId: user.id,
+            name: result,
+            orderIndex: 0,
+          ),
+        );
   }
 
   @override

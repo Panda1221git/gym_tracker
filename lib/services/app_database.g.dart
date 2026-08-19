@@ -1403,8 +1403,46 @@ class $WorkoutsTable extends Workouts with TableInfo<$WorkoutsTable, Workout> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _completedMeta = const VerificationMeta(
+    'completed',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, userId, templateId, name, date];
+  late final GeneratedColumn<bool> completed = GeneratedColumn<bool>(
+    'completed',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("completed" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _archivedMeta = const VerificationMeta(
+    'archived',
+  );
+  @override
+  late final GeneratedColumn<bool> archived = GeneratedColumn<bool>(
+    'archived',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("archived" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    userId,
+    templateId,
+    name,
+    date,
+    completed,
+    archived,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1452,6 +1490,18 @@ class $WorkoutsTable extends Workouts with TableInfo<$WorkoutsTable, Workout> {
     } else if (isInserting) {
       context.missing(_dateMeta);
     }
+    if (data.containsKey('completed')) {
+      context.handle(
+        _completedMeta,
+        completed.isAcceptableOrUnknown(data['completed']!, _completedMeta),
+      );
+    }
+    if (data.containsKey('archived')) {
+      context.handle(
+        _archivedMeta,
+        archived.isAcceptableOrUnknown(data['archived']!, _archivedMeta),
+      );
+    }
     return context;
   }
 
@@ -1481,6 +1531,14 @@ class $WorkoutsTable extends Workouts with TableInfo<$WorkoutsTable, Workout> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}date'],
       )!,
+      completed: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}completed'],
+      )!,
+      archived: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}archived'],
+      )!,
     );
   }
 
@@ -1496,12 +1554,16 @@ class Workout extends DataClass implements Insertable<Workout> {
   final int templateId;
   final String name;
   final DateTime date;
+  final bool completed;
+  final bool archived;
   const Workout({
     required this.id,
     required this.userId,
     required this.templateId,
     required this.name,
     required this.date,
+    required this.completed,
+    required this.archived,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1511,6 +1573,8 @@ class Workout extends DataClass implements Insertable<Workout> {
     map['template_id'] = Variable<int>(templateId);
     map['name'] = Variable<String>(name);
     map['date'] = Variable<DateTime>(date);
+    map['completed'] = Variable<bool>(completed);
+    map['archived'] = Variable<bool>(archived);
     return map;
   }
 
@@ -1521,6 +1585,8 @@ class Workout extends DataClass implements Insertable<Workout> {
       templateId: Value(templateId),
       name: Value(name),
       date: Value(date),
+      completed: Value(completed),
+      archived: Value(archived),
     );
   }
 
@@ -1535,6 +1601,8 @@ class Workout extends DataClass implements Insertable<Workout> {
       templateId: serializer.fromJson<int>(json['templateId']),
       name: serializer.fromJson<String>(json['name']),
       date: serializer.fromJson<DateTime>(json['date']),
+      completed: serializer.fromJson<bool>(json['completed']),
+      archived: serializer.fromJson<bool>(json['archived']),
     );
   }
   @override
@@ -1546,6 +1614,8 @@ class Workout extends DataClass implements Insertable<Workout> {
       'templateId': serializer.toJson<int>(templateId),
       'name': serializer.toJson<String>(name),
       'date': serializer.toJson<DateTime>(date),
+      'completed': serializer.toJson<bool>(completed),
+      'archived': serializer.toJson<bool>(archived),
     };
   }
 
@@ -1555,12 +1625,16 @@ class Workout extends DataClass implements Insertable<Workout> {
     int? templateId,
     String? name,
     DateTime? date,
+    bool? completed,
+    bool? archived,
   }) => Workout(
     id: id ?? this.id,
     userId: userId ?? this.userId,
     templateId: templateId ?? this.templateId,
     name: name ?? this.name,
     date: date ?? this.date,
+    completed: completed ?? this.completed,
+    archived: archived ?? this.archived,
   );
   Workout copyWithCompanion(WorkoutsCompanion data) {
     return Workout(
@@ -1571,6 +1645,8 @@ class Workout extends DataClass implements Insertable<Workout> {
           : this.templateId,
       name: data.name.present ? data.name.value : this.name,
       date: data.date.present ? data.date.value : this.date,
+      completed: data.completed.present ? data.completed.value : this.completed,
+      archived: data.archived.present ? data.archived.value : this.archived,
     );
   }
 
@@ -1581,13 +1657,16 @@ class Workout extends DataClass implements Insertable<Workout> {
           ..write('userId: $userId, ')
           ..write('templateId: $templateId, ')
           ..write('name: $name, ')
-          ..write('date: $date')
+          ..write('date: $date, ')
+          ..write('completed: $completed, ')
+          ..write('archived: $archived')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, userId, templateId, name, date);
+  int get hashCode =>
+      Object.hash(id, userId, templateId, name, date, completed, archived);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1596,7 +1675,9 @@ class Workout extends DataClass implements Insertable<Workout> {
           other.userId == this.userId &&
           other.templateId == this.templateId &&
           other.name == this.name &&
-          other.date == this.date);
+          other.date == this.date &&
+          other.completed == this.completed &&
+          other.archived == this.archived);
 }
 
 class WorkoutsCompanion extends UpdateCompanion<Workout> {
@@ -1605,12 +1686,16 @@ class WorkoutsCompanion extends UpdateCompanion<Workout> {
   final Value<int> templateId;
   final Value<String> name;
   final Value<DateTime> date;
+  final Value<bool> completed;
+  final Value<bool> archived;
   const WorkoutsCompanion({
     this.id = const Value.absent(),
     this.userId = const Value.absent(),
     this.templateId = const Value.absent(),
     this.name = const Value.absent(),
     this.date = const Value.absent(),
+    this.completed = const Value.absent(),
+    this.archived = const Value.absent(),
   });
   WorkoutsCompanion.insert({
     this.id = const Value.absent(),
@@ -1618,6 +1703,8 @@ class WorkoutsCompanion extends UpdateCompanion<Workout> {
     required int templateId,
     required String name,
     required DateTime date,
+    this.completed = const Value.absent(),
+    this.archived = const Value.absent(),
   }) : userId = Value(userId),
        templateId = Value(templateId),
        name = Value(name),
@@ -1628,6 +1715,8 @@ class WorkoutsCompanion extends UpdateCompanion<Workout> {
     Expression<int>? templateId,
     Expression<String>? name,
     Expression<DateTime>? date,
+    Expression<bool>? completed,
+    Expression<bool>? archived,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1635,6 +1724,8 @@ class WorkoutsCompanion extends UpdateCompanion<Workout> {
       if (templateId != null) 'template_id': templateId,
       if (name != null) 'name': name,
       if (date != null) 'date': date,
+      if (completed != null) 'completed': completed,
+      if (archived != null) 'archived': archived,
     });
   }
 
@@ -1644,6 +1735,8 @@ class WorkoutsCompanion extends UpdateCompanion<Workout> {
     Value<int>? templateId,
     Value<String>? name,
     Value<DateTime>? date,
+    Value<bool>? completed,
+    Value<bool>? archived,
   }) {
     return WorkoutsCompanion(
       id: id ?? this.id,
@@ -1651,6 +1744,8 @@ class WorkoutsCompanion extends UpdateCompanion<Workout> {
       templateId: templateId ?? this.templateId,
       name: name ?? this.name,
       date: date ?? this.date,
+      completed: completed ?? this.completed,
+      archived: archived ?? this.archived,
     );
   }
 
@@ -1672,6 +1767,12 @@ class WorkoutsCompanion extends UpdateCompanion<Workout> {
     if (date.present) {
       map['date'] = Variable<DateTime>(date.value);
     }
+    if (completed.present) {
+      map['completed'] = Variable<bool>(completed.value);
+    }
+    if (archived.present) {
+      map['archived'] = Variable<bool>(archived.value);
+    }
     return map;
   }
 
@@ -1682,7 +1783,9 @@ class WorkoutsCompanion extends UpdateCompanion<Workout> {
           ..write('userId: $userId, ')
           ..write('templateId: $templateId, ')
           ..write('name: $name, ')
-          ..write('date: $date')
+          ..write('date: $date, ')
+          ..write('completed: $completed, ')
+          ..write('archived: $archived')
           ..write(')'))
         .toString();
   }
@@ -4150,6 +4253,8 @@ typedef $$WorkoutsTableCreateCompanionBuilder =
       required int templateId,
       required String name,
       required DateTime date,
+      Value<bool> completed,
+      Value<bool> archived,
     });
 typedef $$WorkoutsTableUpdateCompanionBuilder =
     WorkoutsCompanion Function({
@@ -4158,6 +4263,8 @@ typedef $$WorkoutsTableUpdateCompanionBuilder =
       Value<int> templateId,
       Value<String> name,
       Value<DateTime> date,
+      Value<bool> completed,
+      Value<bool> archived,
     });
 
 final class $$WorkoutsTableReferences
@@ -4241,6 +4348,16 @@ class $$WorkoutsTableFilterComposer
 
   ColumnFilters<DateTime> get date => $composableBuilder(
     column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get completed => $composableBuilder(
+    column: $table.completed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get archived => $composableBuilder(
+    column: $table.archived,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4340,6 +4457,16 @@ class $$WorkoutsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get completed => $composableBuilder(
+    column: $table.completed,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get archived => $composableBuilder(
+    column: $table.archived,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$AppUsersTableOrderingComposer get userId {
     final $$AppUsersTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -4404,6 +4531,12 @@ class $$WorkoutsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get date =>
       $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<bool> get completed =>
+      $composableBuilder(column: $table.completed, builder: (column) => column);
+
+  GeneratedColumn<bool> get archived =>
+      $composableBuilder(column: $table.archived, builder: (column) => column);
 
   $$AppUsersTableAnnotationComposer get userId {
     final $$AppUsersTableAnnotationComposer composer = $composerBuilder(
@@ -4514,12 +4647,16 @@ class $$WorkoutsTableTableManager
                 Value<int> templateId = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<DateTime> date = const Value.absent(),
+                Value<bool> completed = const Value.absent(),
+                Value<bool> archived = const Value.absent(),
               }) => WorkoutsCompanion(
                 id: id,
                 userId: userId,
                 templateId: templateId,
                 name: name,
                 date: date,
+                completed: completed,
+                archived: archived,
               ),
           createCompanionCallback:
               ({
@@ -4528,12 +4665,16 @@ class $$WorkoutsTableTableManager
                 required int templateId,
                 required String name,
                 required DateTime date,
+                Value<bool> completed = const Value.absent(),
+                Value<bool> archived = const Value.absent(),
               }) => WorkoutsCompanion.insert(
                 id: id,
                 userId: userId,
                 templateId: templateId,
                 name: name,
                 date: date,
+                completed: completed,
+                archived: archived,
               ),
           withReferenceMapper: (p0) => p0
               .map(

@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 
-import 'pages/exercises_page.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'services/notification_service.dart';
 import 'pages/home_page.dart';
-import 'pages/history_page.dart';
 import 'pages/workout_page.dart';
+import 'pages/history_page.dart';
+import 'pages/exercises_page.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await NotificationService.initialize();
+
   runApp(const GymTrackerApp());
 }
 

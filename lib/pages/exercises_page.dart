@@ -12,9 +12,12 @@ class ExercisesPage extends StatefulWidget {
 
 class _ExercisesPageState extends State<ExercisesPage> {
   final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _equipmentController = TextEditingController();
+  final TextEditingController _equipmentController = TextEditingController();   
 
   final AppDatabase _database = AppDatabase();
+
+  Stream<List<Exercise>> get _exercisesStream =>
+      _database.select(_database.exercises).watch();
 
   String _selectedMuscleGroup = 'Brust';
 
@@ -280,85 +283,73 @@ class _ExercisesPageState extends State<ExercisesPage> {
   // Oberfläche
   // --------------------------------------------------
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Meine Übungen'),
-      ),
-      body: StreamBuilder<List<Exercise>>(
-        stream: _database.select(_database.exercises).watch(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          }
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: const Text('Meine Übungen'),
+    ),
+    body: StreamBuilder<List<Exercise>>(
+      stream: _exercisesStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
 
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Fehler beim Laden: ${snapshot.error}',
-              ),
-            );
-          }
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Fehler beim Laden: ${snapshot.error}',
+            ),
+          );
+        }
 
-          final exercises = snapshot.data ?? [];
+        final exercises = snapshot.data ?? [];
 
-          if (exercises.isEmpty) {
-            return const Center(
-              child: Text(
-                'Noch keine Übungen vorhanden',
-                style: TextStyle(fontSize: 18),
-              ),
-            );
-          }
+        if (exercises.isEmpty) {
+          return const Center(
+            child: Text(
+              'Noch keine Übungen vorhanden',
+              style: TextStyle(fontSize: 18),
+            ),
+          );
+        }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: exercises.length,
-            itemBuilder: (context, index) {
-              final exercise = exercises[index];
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: exercises.length,
+          itemBuilder: (context, index) {
+            final exercise = exercises[index];
 
-              return Card(
-                child: ListTile(
-                  leading: const CircleAvatar(
-                    child: Icon(Icons.fitness_center),
-                  ),
-                  title: Text(exercise.name),
-                  subtitle: Text(
-                    '${exercise.muscleGroup}'
-                    '${exercise.equipment != null ? ' • ${exercise.equipment}' : ''}',
-                  ),
-                  trailing: PopupMenuButton<String>(
-                    onSelected: (value) {
-                      if (value == 'edit') {
-                        _showEditExerciseDialog(exercise);
-                      } else if (value == 'delete') {
-                        _deleteExercise(exercise.id);
-                      }
-                    },
-                    itemBuilder: (context) => const [
-                      PopupMenuItem(
-                        value: 'edit',
-                        child: Text('Bearbeiten'),
-                      ),
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: Text('Löschen'),
-                      ),
-                    ],
+            return Card(
+              margin: const EdgeInsets.only(bottom: 10),
+              child: ListTile(
+                leading: const CircleAvatar(
+                  child: Icon(Icons.fitness_center),
+                ),
+                title: Text(
+                  exercise.name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              );
-            },
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddExerciseDialog,
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
+                subtitle: Text(
+                  '${exercise.muscleGroup}'
+                  '${exercise.equipment != null ? ' • ${exercise.equipment}' : ''}',
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ),
+    floatingActionButton: FloatingActionButton.extended(
+      onPressed: _showAddExerciseDialog,
+      icon: const Icon(Icons.add),
+      label: const Text('Übung'),
+    ),
+  );
+}
 }
