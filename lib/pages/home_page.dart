@@ -72,7 +72,6 @@ class _HomePageState extends State<HomePage> {
     }).toList();
 
     int weeklySets = 0;
-    int weeklyMinutes = 0;
 
     for (final workout in weeklyWorkouts) {
       final workoutExercises = await (_database.select(
@@ -92,11 +91,6 @@ class _HomePageState extends State<HomePage> {
       }
     }
 
-    // Trainingsdauer aus Start- und Endzeit ist aktuell nicht
-    // in der Datenbank gespeichert.
-    // Deshalb bleiben die Minuten vorerst bei 0.
-    weeklyMinutes = 0;
-
     if (!mounted) return;
 
     setState(() {
@@ -104,7 +98,10 @@ class _HomePageState extends State<HomePage> {
       _lastWorkout = workouts.isNotEmpty ? workouts.first : null;
       _weeklyWorkouts = weeklyWorkouts.length;
       _weeklySets = weeklySets;
-      _weeklyMinutes = weeklyMinutes;
+
+      // Trainingsdauer wird momentan noch nicht gespeichert.
+      _weeklyMinutes = 0;
+
       _isLoading = false;
     });
   }
@@ -142,11 +139,28 @@ class _HomePageState extends State<HomePage> {
         '${date.year}';
   }
 
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+
+    if (hour < 12) {
+      return 'Guten Morgen 👋';
+    }
+
+    if (hour < 18) {
+      return 'Guten Tag 👋';
+    }
+
+    return 'Guten Abend 👋';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
+
+    final theme = Theme.of(context);
+    final accent = theme.colorScheme.primary;
 
     return Scaffold(
       appBar: AppBar(
@@ -154,69 +168,121 @@ class _HomePageState extends State<HomePage> {
           'GymTracker',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
+        actions: [
+          IconButton(
+            onPressed: _loadHomeData,
+            tooltip: 'Aktualisieren',
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _loadHomeData,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Heute',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+              // ============================================================
+              // Begrüßung
+              // ============================================================
+              Text(
+                _getGreeting(),
+                style: const TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.5,
+                ),
               ),
 
               const SizedBox(height: 6),
 
               Text(
-                'Bereit für dein nächstes Training? 💪',
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+                'Bereit für dein nächstes Training?',
+                style: TextStyle(fontSize: 16, color: Colors.grey.shade400),
               ),
 
               const SizedBox(height: 24),
 
+              // ============================================================
+              // Nächstes Training
+              // ============================================================
               Card(
-                elevation: 2,
+                margin: EdgeInsets.zero,
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.fitness_center, size: 40),
+                      Row(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: accent.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Icon(
+                              Icons.fitness_center,
+                              color: accent,
+                              size: 26,
+                            ),
+                          ),
 
-                      const SizedBox(height: 16),
+                          const SizedBox(width: 14),
 
-                      const Text(
-                        'Dein nächstes Training',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'DEIN NÄCHSTES TRAINING',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.1,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Bereit für die nächste Einheit?',
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
 
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 22),
 
                       if (_nextWorkout == null)
                         Text(
                           'Noch keinen Trainingsplan erstellt.',
-                          style: TextStyle(color: Colors.grey.shade600),
+                          style: TextStyle(
+                            color: Colors.grey.shade400,
+                            fontSize: 15,
+                          ),
                         )
                       else ...[
                         Text(
                           _nextWorkout!.name,
                           style: const TextStyle(
-                            fontSize: 20,
+                            fontSize: 25,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
 
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
 
                         Text(
-                          'Bereit für deine nächste Einheit?',
-                          style: TextStyle(color: Colors.grey.shade600),
+                          'Dein nächstes Training wartet auf dich.',
+                          style: TextStyle(color: Colors.grey.shade400),
                         ),
                       ],
 
@@ -237,11 +303,18 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
 
+              // ============================================================
+              // Wochenstatistik
+              // ============================================================
               const Text(
-                'Deine Woche',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                'DEINE WOCHE',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
               ),
 
               const SizedBox(height: 12),
@@ -253,57 +326,125 @@ class _HomePageState extends State<HomePage> {
                       icon: Icons.fitness_center,
                       value: '$_weeklyWorkouts',
                       label: 'Trainings',
+                      accent: accent,
                     ),
                   ),
 
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
 
                   Expanded(
                     child: _StatCard(
-                      icon: Icons.repeat,
+                      icon: Icons.check_circle_outline,
                       value: '$_weeklySets',
                       label: 'Sätze',
+                      accent: accent,
                     ),
                   ),
 
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
 
                   Expanded(
                     child: _StatCard(
-                      icon: Icons.timer,
+                      icon: Icons.timer_outlined,
                       value: '$_weeklyMinutes',
                       label: 'Minuten',
+                      accent: accent,
                     ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
 
+              // ============================================================
+              // Letztes Training
+              // ============================================================
               const Text(
-                'Letztes Training',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                'LETZTES TRAINING',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
               ),
 
               const SizedBox(height: 12),
 
               Card(
+                margin: EdgeInsets.zero,
                 child: _lastWorkout == null
-                    ? const ListTile(
-                        leading: CircleAvatar(child: Icon(Icons.history)),
-                        title: Text(
-                          'Noch kein Training',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                    ? Padding(
+                        padding: const EdgeInsets.all(18),
+                        child: Row(
+                          children: [
+                            _HistoryIcon(accent: accent, icon: Icons.history),
+
+                            const SizedBox(width: 14),
+
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Noch kein Training',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Starte dein erstes Training!',
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        subtitle: Text('Starte dein erstes Training!'),
                       )
-                    : ListTile(
-                        leading: const CircleAvatar(child: Icon(Icons.history)),
-                        title: Text(
-                          _lastWorkout!.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                    : Padding(
+                        padding: const EdgeInsets.all(18),
+                        child: Row(
+                          children: [
+                            _HistoryIcon(
+                              accent: accent,
+                              icon: Icons.fitness_center,
+                            ),
+
+                            const SizedBox(width: 14),
+
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _lastWorkout!.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 4),
+
+                                  Text(
+                                    _formatWorkoutDate(_lastWorkout!.date),
+                                    style: TextStyle(
+                                      color: Colors.grey.shade400,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            Icon(
+                              Icons.chevron_right,
+                              color: Colors.grey.shade500,
+                            ),
+                          ],
                         ),
-                        subtitle: Text(_formatWorkoutDate(_lastWorkout!.date)),
                       ),
               ),
             ],
@@ -318,23 +459,26 @@ class _StatCard extends StatelessWidget {
   final IconData icon;
   final String value;
   final String label;
+  final Color accent;
 
   const _StatCard({
     required this.icon,
     required this.value,
     required this.label,
+    required this.accent,
   });
 
   @override
   Widget build(BuildContext context) {
     return Card(
+      margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 6),
         child: Column(
           children: [
-            Icon(icon, size: 28),
+            Icon(icon, size: 25, color: accent),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: 9),
 
             Text(
               value,
@@ -346,11 +490,31 @@ class _StatCard extends StatelessWidget {
             Text(
               label,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _HistoryIcon extends StatelessWidget {
+  final Color accent;
+  final IconData icon;
+
+  const _HistoryIcon({required this.accent, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Icon(icon, color: accent, size: 24),
     );
   }
 }
